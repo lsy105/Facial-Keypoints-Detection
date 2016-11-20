@@ -310,11 +310,13 @@ def PrintTestResult(result_list, file_name):
       with open (file_name, 'w') as fo:
             size = len(result_list[0])
             p = 1
+            point_idx = 1
             table = TestDataLookUp('./table.txt')
             fo.write('RowId Location\n')
             for element in result_list:
                   for idx in table[p]:
-                        line = str(p) + ' ' + str(element[idx]) + '\n'
+                        line = str(point_idx) + ' ' + str(element[idx]) + '\n'
                         fo.write(line)                         
-                        p += 1
+                        point_idx += 1
+                  p += 1
       fo.close()
