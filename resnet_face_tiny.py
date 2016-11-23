@@ -26,8 +26,9 @@ training = tf.placeholder(tf.bool)
 
 #obtain the score matrix, softmax is not applied yet
 output_1 = Resnet(X, num_class, training)
-output = Level2(X, batch_size, 128, output_1, training)
-output = (output_1 + output) / 2
+output_2 = Level2(X, batch_size, [32, 64, 128], output_1, 7, training)
+output_3 = Level2(X, batch_size, [32, 64, 128], output_2, 5, training)
+output = output_1 + ((output_2 - output_1) + (output_3 - output_1)) / 2
 loss = MeanSquareLoss(output, y_t, y_sup, reg_rate)
 acc = Accuracy(output, y_t, y_sup)
 train_step = Train(LR, loss)

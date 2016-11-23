@@ -47,7 +47,7 @@ def Res3x3(x, out_C, is_pooling, training_mode):
                           
                                                       
 
-def TinyRegionResnet(img, batch_size, x, y, out_C, training_mode):
+def TinyRegionResnet(img, batch_size, x, y, out_C, local_region_size, training_mode):
       """
       Run resnet neural network on small area in image
       centered at x and y with width 10
@@ -57,25 +57,30 @@ def TinyRegionResnet(img, batch_size, x, y, out_C, training_mode):
            x: x coordinate
            y: y coordinate
            out_C: output_channel
+           local_region_size: size of local region in image
            training_mode: it it is in training
 
       Return:
            new_x: adjusted x
            new_y: adjusted y
       """
+      local_size = local_region_size
       int_x, int_y = tf.cast(x, tf.int32), tf.cast(y, tf.int32)
       tiny_img = [list() for i in range(batch_size)]
       for idx in range(batch_size):
-            low_x = tf.maximum(0, int_x[idx] - 3)
-            low_y = tf.maximum(0, int_y[idx] - 3)
-            tiny_img[idx] = tf.slice(img[idx], [low_x, low_y, 0], [7, 7, 1]) 
+            low_x = tf.maximum(0, int_x[idx] - local_size//2)
+            low_y = tf.maximum(0, int_y[idx] - local_size//2)
+            low_x = tf.minimum(low_x, 96 - local_size)
+            low_y = tf.minimum(low_y, 96 - local_size)
+            tiny_img[idx] = tf.slice(img[idx], [low_x, low_y, 0], 
+                                     [local_size, local_size, 1]) 
       tiny_img = tf.pack(tiny_img)
-      conv_out = Res3x3(tiny_img, out_C, 0, training_mode)
-      conv_out = Res3x3(conv_out, out_C, 0, training_mode)
-      last_layer_size = out_C * 7 * 7
+      conv_out = Res3x3(tiny_img, out_C[0], 0, training_mode)
+      conv_out = Res3x3(conv_out, out_C[1], 0, training_mode)
+      conv_out = Res3x3(conv_out, out_C[2], 0, training_mode)
+      last_layer_size = out_C[2] * local_size * local_size
       conv_out = tf.reshape(conv_out, [-1, last_layer_size])
       output = FCLayer(conv_out, 2, 1.0, 1, training_mode)
-      print (output)
       return output
       
 def Resnet(x, num_class, training_mode):
@@ -179,7 +184,7 @@ def ResnetwithTinyRegion(x, num_class, batch_size, training_mode):
       return output
 
 
-def Level2(x, batch_size, out_C, x_y_value, training_mode):
+def Level2(x, batch_size, out_C, x_y_value, local_region_size, training_mode):
       #tiny region layer
       with tf.name_scope('tiny_region_layer'):
             output_list = [list() for i in range(batch_size)]
@@ -189,6 +194,7 @@ def Level2(x, batch_size, out_C, x_y_value, training_mode):
                                               x_y_value[:, idx],
                                               x_y_value[:, idx + 1], 
                                               out_C,
+                                              local_region_size, 
                                               training_mode)
                   for i in range(batch_size):
                         output_list[i].append(temp_out[i, 0])
