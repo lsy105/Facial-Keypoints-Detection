@@ -26,9 +26,13 @@ training = tf.placeholder(tf.bool)
 
 #obtain the score matrix, softmax is not applied yet
 output_1 = Resnet(X, num_class, training)
-output_2 = Level2(X, batch_size, [32, 64, 128], output_1, 7, training)
-output_3 = Level2(X, batch_size, [32, 64, 128], output_2, 5, training)
-output = output_1 + ((output_2 - output_1) + (output_3 - output_1)) / 2
+output_2 = Level2(X, batch_size, [32, 64, 128], output_1, 5, training)
+output_3 = Level2(X, batch_size, [32, 64, 128], output_2, 3, training)
+W_1 = tf.Variable(0.5)
+W_2 = tf.Variable(0.25)
+W_3 = tf.Variable(0.25)
+W_all = W_1 + W_2 + W_3
+output = (W_1 / W_all) * output_1 + (W_2 / W_all) * output_2 + (W_3 / W_all) * output_3
 loss = MeanSquareLoss(output, y_t, y_sup, reg_rate)
 acc = Accuracy(output, y_t, y_sup)
 train_step = Train(LR, loss)
@@ -43,7 +47,7 @@ init_op = tf.group(tf.initialize_all_variables())
 
 with tf.Session() as test:
       test.run(init_op)
-      train_writer = tf.train.SummaryWriter('./resnet_train_tiny', test.graph)
+      train_writer = tf.train.SummaryWriter('./resnet_train_tiny_5_3', test.graph)
       train_imgs, train_labels, val_imgs, val_labels = ReadData("training.csv")     
       train_imgs = DatasetMeanNorm(train_imgs)
       val_imgs = DatasetMeanNorm(val_imgs) 
@@ -93,4 +97,4 @@ with tf.Session() as test:
                                          training: 0})
                   train_writer.add_summary(val_summary, i)
             i += 1
-            if i % 1000 == 0 and i > 0: saver.save(test, './face_model_tiny')
+            if i % 1000 == 0 and i > 0: saver.save(test, './face_model_tiny_5_3')
