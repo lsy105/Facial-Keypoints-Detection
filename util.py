@@ -125,7 +125,7 @@ def Accuracy(score_matrix, truth_matrix, sup_matrix):
       """
       sub_score_matrix = tf.mul(sup_matrix, score_matrix)
       truth_matrix += sub_score_matrix
-      error = tf.reduce_sum(tf.sqrt(truth_matrix - score_matrix), 1)
+      error = tf.reduce_sum(tf.square(truth_matrix - score_matrix), 1)
       accuracy = tf.sqrt(tf.reduce_mean(error, 0))
       return accuracy
 
@@ -133,7 +133,7 @@ def Accuracy(score_matrix, truth_matrix, sup_matrix):
 
 def FlipImageandLabel(image, label):
       """
-      Flip image in left/right direction
+      rotate image around diagonal of matrix
       Args:
             image: input image with type np.array
             label: input label with type np.array
@@ -141,70 +141,15 @@ def FlipImageandLabel(image, label):
             new_image: flipped input image
             label: flipped input label
       """
-      new_image = np.fliplr(image)
+      new_image = np.flipud(image)
+      new_image = np.rot90(new_image)
       new_label = np.zeros((label.shape), np.float32)
       idx = 0
       while idx < 30:
-            if label[idx] == 0:
-                  new_label[idx + 1] = label[idx + 1]
-                  idx += 2
-                  continue
-            new_label[idx] = 96 - label[idx]
-            new_label[idx + 1] = label[idx + 1]
+            new_label[idx] = label[idx + 1]
+            new_label[idx + 1] = label[idx]
             idx += 2
       return new_image, new_label
-
-
-      
-def RotateLabel90(label, k=1):
-      """
-      Rotate labels by k * 90 degree in the counter-clockwise direction
-
-      Args:
-            label: label array
-            k: number of 90 degree rotation
-
-      Returns:
-            rot_label: rotated label array
-      """
-      num_90 = k % 4
-      idx = 0
-      size = label.shape
-      new_label = np.empty((size), np.float32)
-      len_row = 96
-      len_col = 96
-      if num_90 == 1:
-            while idx < 30:
-                  row = label[idx + 1]
-                  col = label[idx]
-                  new_label[idx] = row
-                  new_label[idx + 1] = len_col - col - 1
-                  if col == 0.0: 
-                        new_label[idx + 1] = 0.0
-                  idx += 2
-
-      if num_90 == 2:
-            while idx < 30:
-                  row = label[idx + 1]
-                  col = label[idx]
-                  new_label[idx] = len_col - col - 1
-                  new_label[idx + 1] = len_row - row - 1
-                  if col == 0.0: 
-                        new_label[idx] = 0.0
-                  if row == 0.0:
-                        new_label[idx + 1] = 0.0
-                  idx += 2
-      
-      if num_90 == 3:
-            while idx < 30:
-                  row = label[idx + 1]
-                  col = label[idx]
-                  new_label[idx] = len_row - row - 1
-                  new_label[idx + 1] = col
-                  if row == 0.0: 
-                        new_label[idx] = 0.0
-                  idx += 2
-      return new_label
 
 
 
@@ -215,10 +160,14 @@ def GenBatch(img_in, labels, if_rotate, batch_size=32, num_class=200):
             img_in: image dataset
             labels: labels for images with shape [N, 1]
             batch_size: size of batch
+            num_class: number of classes 
       Returns:
             img_out: a np.array of image data with shape[batch_size, img_width, 
                                                          img_height, img_channel]
             label_matrix: label np.array with shape[batch_size, num_class]
+            sup_matrix: label np.array with shape[batch_size, num_class] 
+                        if coordinate is missing at specific index, value in that index is 1
+                        otherwise is 0
       """
       if not if_rotate:
             idx = np.random.choice(labels.shape[0], batch_size)
@@ -231,6 +180,7 @@ def GenBatch(img_in, labels, if_rotate, batch_size=32, num_class=200):
             return img_out, label_matrix, sup_matrix
 
       #create a label matrix with shape [batch_size, num_class]
+      batch_size = batch_size // 2
       idx = np.random.choice(labels.shape[0], batch_size)
       img_out = img_in[idx]
       label_matrix = labels[idx]
@@ -239,20 +189,15 @@ def GenBatch(img_in, labels, if_rotate, batch_size=32, num_class=200):
       sup_matrix[sup_matrix < 0] = 1.0
       label_matrix += sup_matrix
 
-      """
       #Rotate images and labels to create more data
       new_img_out = np.empty((batch_size, 96, 96, 1))
       new_label_matrix = np.empty((batch_size, 30))
       for idx in range(batch_size):      
-            #k = np.random.randint(3) + 1
             new_img_out[idx], new_label_matrix[idx] = FlipImageandLabel(img_out[idx],
                                                                         label_matrix[idx])
-            #new_label_matrix[idx] = RotateLabel90(label_matrix[idx], k)
-            #new_img_out[idx] = np.rot90(img_out[idx], k)
       label_matrix = np.concatenate((label_matrix, new_label_matrix), axis=0)  
       img_out = np.concatenate((img_out, new_img_out), axis=0) 
       sup_matrix = np.concatenate((sup_matrix, sup_matrix), axis=0) 
-      """
       #return result
       return img_out, label_matrix, sup_matrix
 
