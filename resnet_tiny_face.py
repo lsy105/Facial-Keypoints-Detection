@@ -54,7 +54,7 @@ with tf.Session() as test:
       for i in range(num_iter):
             img_batch, label_batch, sup_batch = GenBatch(train_imgs, 
                                                          train_labels,
-                                                         0,
+                                                         1,
                                                          batch_size, 
                                                          num_class)
 
