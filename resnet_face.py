@@ -12,8 +12,8 @@ F_dim = 3          #3x3
 pool_dim = 2       #pool layer dimension
 
 
-reg_rate = 0.3e-3
-LR = 0.3e-3
+reg_rate = 8e-5
+LR = 0.1e-3
 num_class = 30
 batch_size = 32
 num_epoch = 20
@@ -90,4 +90,4 @@ with tf.Session() as test:
                                          training: 0})
                   train_writer.add_summary(val_summary, i)
             i += 1
-            if i % 1000 == 0 and i > 0: saver.save(test, "./face_model")
+            if i % 1000 == 0 and i > 0: saver.save(test, './face_model')
