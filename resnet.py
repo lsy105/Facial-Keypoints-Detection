@@ -77,12 +77,13 @@ def TinyRegionResnet(img, batch_size, x, y, out_C, local_region_size, training_m
       tiny_img = tf.pack(tiny_img)
       conv_out = Res3x3(tiny_img, out_C[0], 0, training_mode)
       conv_out = Res3x3(conv_out, out_C[1], 0, training_mode)
-      conv_out = Res3x3(conv_out, out_C[2], 0, training_mode)
-      last_layer_size = out_C[2] * local_size * local_size
+      last_layer_size = out_C[-1] * local_size * local_size
       conv_out = tf.reshape(conv_out, [-1, last_layer_size])
       output = FCLayer(conv_out, 2, 1.0, 1, training_mode)
       return output
-      
+     
+
+ 
 def Resnet(x, num_class, training_mode):
       """
       build 16 layers residual neural network
@@ -126,62 +127,6 @@ def Resnet(x, num_class, training_mode):
 
       return output
 
-
-def ResnetwithTinyRegion(x, num_class, batch_size, training_mode):
-      """
-      build 16 layers residual neural network
-      Args:
-            x: input with shape [batch_size, width, height, channel]
-            training_mode: if in training mode
-
-      Returns:
-            return the score matrix with shape [batch_size, num_class(200)] 
-      """
-      #define number of output channel of filters in each resdidual unit
-      filter_list  = [64, 64, 128, 128, 256, 256, 256]                         
-      #define if do pooling at current residual unit(1: do pooling)
-      if_pool_list = [ 1,  0,  1,  0,  1,  0,  0]                
-      num_pool = sum(if_pool_list)
-     
-      #get shape of x
-      x_size, x_W, x_H, x_C = x.get_shape()     
-      x_H, x_W, x_C = int(x_H), int(x_W), int(x_C)
-
-      #verify if there are too many pooling layer
-      assert x_W % (2**num_pool) == 0, "too many pooling layer"
- 
-      #first conv layer 3x3 filter
-      with tf.name_scope('first_layer'):
-            conv_out = ConvNormReluForward(x, filter_list[0], training_mode)
-            conv_out = ConvNormReluForward(conv_out, filter_list[0], training_mode)
-      
-      #build all residual units
-      with tf.name_scope('residual_network'):  
-            for idx in range(len(filter_list)):
-                  with tf.name_scope('unit_%d_%d' % (idx, filter_list[idx])):
-                        conv_out = Res3x3(conv_out, filter_list[idx], 
-                                          if_pool_list[idx], training_mode)             
-      
-      #1st level output layer
-      with tf.name_scope('1st_level_output_layer'):
-            last_layer_size = filter_list[-1] * (x_W // (2**num_pool))**2 
-            conv_out = tf.reshape(conv_out, [-1, last_layer_size])
-            output = FCLayer(conv_out, num_class, 1.0, 1, training_mode)
-
-      #tiny region layer
-      with tf.name_scope('tiny_region_layer'):
-            output_list = list()
-            for img_idx in range(batch_size): 
-                  idx = 0
-                  while idx < 30 :
-                        temp_out_x, temp_out_y = TinyRegionResnet(x[img_idx], output[img_idx, idx], 
-                                                                  output[img_idx, idx + 1], 64, 
-                                                                  training_mode)
-                        output_list.append(temp_out_x)
-                        output_list.append(temp_out_y)
-                        idx += 2    
-      output = tf.pack(output_list)
-      return output
 
 
 def Level2(x, batch_size, out_C, x_y_value, local_region_size, training_mode):
