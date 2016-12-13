@@ -31,6 +31,7 @@ output_2 = Level2(X, batch_size, 64, level1_out, training)
 loss_1 = MeanSquareLoss(output_1, y_t, y_sup, reg_rate)
 loss_2 = MeanSquareLoss(output_2, y_t, y_sup, reg_rate)
 acc = Accuracy(output_2, y_t, y_sup)
+acc_1 = Accuracy(output_1, y_t, y_sup)
 train_step_1 = Train(LR, loss_1)
 train_step_2 = Train(LR, loss_2)
 
@@ -38,6 +39,7 @@ train_step_2 = Train(LR, loss_2)
 loss_summary = tf.scalar_summary('loss', loss_2)
 train_acc_summary  = tf.scalar_summary('training accuracy', acc)
 val_acc_summary    = tf.scalar_summary('val accuracy', acc)
+val_acc_summary_1    = tf.scalar_summary('val accuracy_1', acc_1)
 
 saver = tf.train.Saver()
 init_op = tf.group(tf.initialize_all_variables())
@@ -105,7 +107,13 @@ with tf.Session() as test:
                   out1 = test.run(output_1, feed_dict={X: img_batch,
                                                        y_t: label_batch,
                                                        y_sup: sup_batch,
-                                                       training: 1})
+                                                       training: 0})
+
+                  val_summary_1 = test.run(val_acc_summary_1, 
+                                           feed_dict={X: img_batch,
+                                           y_t: label_batch,
+                                           y_sup: sup_batch,
+                                           training: 0})
 
                   val_summary = test.run(val_acc_summary, 
                                          feed_dict={X: img_batch, 
@@ -114,5 +122,6 @@ with tf.Session() as test:
                                          level1_out: out1,
                                          training: 0})
                   train_writer.add_summary(val_summary, i)
+                  train_writer.add_summary(val_summary_1, i)
             i += 1
             if i % 1000 == 0 and i > 0: saver.save(test, './face_model_tiny')
